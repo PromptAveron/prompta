@@ -2,7 +2,7 @@
 const nextConfig = {
   output: 'export',
   trailingSlash: true,
-  basePath: process.env.GITHUB_PAGES === 'true' ? '/promptavero' : '',
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH ?? (process.env.GITHUB_PAGES === 'true' ? '/promptavero' : ''),
   experimental: {
     agentUpgrade: 'security',
   },

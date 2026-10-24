@@ -11,7 +11,7 @@ This project is exported as a static Next.js site and deployed to GitHub Pages b
 3. Under **Settings → Pages**, select **GitHub Actions** as the build and deployment source.
 4. Run **Actions → Build and deploy GitHub Pages → Run workflow**, or push to `main`.
 
-The site is built for `https://jamal-sir.github.io/promptavero`. The public Supabase key is included in browser code by design; keep Supabase Row Level Security enabled. **Never add a Supabase secret/service-role key to GitHub variables, workflow files, or this static site.**
+The site is built for `https://promptaveron.github.io` from the `PromptAveron/PromptAveron.github.io` repository. The public Supabase key is included in browser code by design; keep Supabase Row Level Security enabled. **Never add a Supabase secret/service-role key to GitHub variables, workflow files, or this static site.**
 
 ## Admin and content publishing
 
