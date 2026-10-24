@@ -48,7 +48,7 @@ jobs:
         run: pnpm build
         env:
           GITHUB_PAGES: 'true'
-          NEXT_PUBLIC_BASE_PATH: ''
+          GITHUB_PAGES_ROOT: 'true'
           NEXT_PUBLIC_SITE_URL: https://promptaveron.github.io
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
