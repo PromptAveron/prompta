@@ -6,15 +6,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+    "start": "next start"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
-    "@opennextjs/cloudflare": "^1.20.12",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "@vercel/analytics": "1.6.1",
@@ -38,7 +33,6 @@
     "@types/react-dom": "^19",
     "postcss": "^8.5",
     "tailwindcss": "^4.3.3",
-    "typescript": "5.7.3",
-    "wrangler": "^4.151.3"
+    "typescript": "5.7.3"
   }
 }

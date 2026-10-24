@@ -1,7 +1,12 @@
 import type { SiteSettings } from './types'
 
-/** Resolves the canonical origin: admin setting, then env, then Vercel, then localhost. */
+/** Resolves the canonical origin, with the GitHub Pages deployment URL taking precedence. */
 export function getBaseUrl(settings?: Pick<SiteSettings, 'site_url' | 'custom_domain'> | null): string {
+  if (process.env.GITHUB_PAGES === 'true') {
+    const pagesUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim()
+    if (pagesUrl) return pagesUrl.replace(/\/+$/, '')
+  }
+
   const fromSettings = settings?.site_url?.trim()
   if (fromSettings) return fromSettings.replace(/\/+$/, '')
 

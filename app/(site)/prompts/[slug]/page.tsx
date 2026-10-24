@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { notFound, permanentRedirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { AdSlot } from '@/components/site/ad-slot'
 import { Breadcrumbs } from '@/components/site/breadcrumbs'
 import { CopyPrompt } from '@/components/site/copy-prompt'
@@ -8,20 +8,25 @@ import { JsonLd } from '@/components/site/json-ld'
 import { PromptGallery } from '@/components/site/prompt-gallery'
 import { PromptLikeButton } from '@/components/site/prompt-like-button'
 import { PromptGrid } from '@/components/site/prompt-card'
-import { findRedirect, getPromptBySlug, getRelatedPrompts, getSettings } from '@/lib/data/public'
+import { getPromptBySlug, getRelatedPrompts, getSettings } from '@/lib/data/public'
+import { createPublicClient } from '@/lib/supabase/public'
 import { breadcrumbJsonLd, buildPageMetadata, promptJsonLd } from '@/lib/seo'
 import { formatDate, getBaseUrl, truncate } from '@/lib/site'
-
-export const revalidate = 300
 
 type Props = { params: Promise<{ slug: string }> }
 
 async function resolve(slug: string) {
-  const prompt = await getPromptBySlug(slug)
-  if (prompt) return prompt
-  const target = await findRedirect('prompt', slug)
-  if (target && target !== slug) permanentRedirect(`/prompts/${target}`)
-  return null
+  return getPromptBySlug(slug)
+}
+
+export async function generateStaticParams() {
+  const { data, error } = await createPublicClient()
+    .from('prompts')
+    .select('slug')
+    .eq('status', 'published')
+    .lte('published_at', new Date().toISOString())
+  if (error) throw new Error('Failed to load prompt pages for static export')
+  return (data ?? []).map(({ slug }) => ({ slug }))
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

@@ -6,8 +6,6 @@ import { getPopulatedCategories, getSettings } from '@/lib/data/public'
 import { breadcrumbJsonLd, buildPageMetadata } from '@/lib/seo'
 import { getBaseUrl } from '@/lib/site'
 
-export const revalidate = 300
-
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSettings()
   return buildPageMetadata({

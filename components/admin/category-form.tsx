@@ -41,7 +41,7 @@ export function CategoryForm({ category }: { category?: Category }) {
         <Field
           label="URL slug"
           htmlFor="slug"
-          hint={`Appears at /categories/${slug || 'your-slug'}. Changing it keeps the old link redirecting.`}
+          hint={`Appears at /categories/${slug || 'your-slug'}. Changing it changes the URL; rerun the Pages workflow to publish it.`}
           error={fe.slug}
         >
           <input

@@ -4,16 +4,10 @@ import { Search } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useId, useRef, useState } from 'react'
-import useSWR from 'swr'
+import { createPublicClient } from '@/lib/supabase/public'
 import { cn } from '@/lib/utils'
 
 type Suggestion = { title: string; slug: string; category_name: string }
-
-const fetcher = async (url: string): Promise<Suggestion[]> => {
-  const res = await fetch(url)
-  if (!res.ok) return []
-  return res.json()
-}
 
 type Props = {
   variant?: 'header' | 'hero'
@@ -30,18 +24,37 @@ export function SearchBox({ variant = 'header', defaultValue = '', className, pl
   const [debounced, setDebounced] = useState('')
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
+  const [suggestionError, setSuggestionError] = useState(false)
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(value.trim()), 200)
     return () => clearTimeout(t)
   }, [value])
 
-  const { data } = useSWR(
-    open && debounced.length >= 2 ? `/api/suggest?q=${encodeURIComponent(debounced)}` : null,
-    fetcher,
-    { keepPreviousData: true, revalidateOnFocus: false },
-  )
-  const suggestions = data ?? []
+  useEffect(() => {
+    if (!open || debounced.length < 2) {
+      setSuggestions([])
+      setSuggestionError(false)
+      return
+    }
+    let active = true
+    createPublicClient()
+      .rpc('search_prompts', {
+        p_q: debounced,
+        p_category: null,
+        p_tag: null,
+        p_sort: 'relevance',
+        p_limit: 6,
+        p_offset: 0,
+      })
+      .then(({ data, error }) => {
+        if (!active) return
+        setSuggestionError(Boolean(error))
+        setSuggestions((data ?? []) as Suggestion[])
+      })
+    return () => { active = false }
+  }, [open, debounced])
   const showList = open && debounced.length >= 2 && suggestions.length > 0
   const total = suggestions.length + 1
 
@@ -71,7 +84,7 @@ export function SearchBox({ variant = 'header', defaultValue = '', className, pl
   return (
     <form
       ref={wrapperRef}
-      action="/search"
+      action={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/search`}
       method="get"
       role="search"
       className={cn('relative', className)}
@@ -157,7 +170,7 @@ export function SearchBox({ variant = 'header', defaultValue = '', className, pl
         </ul>
       ) : null}
       <div className="sr-only" role="status" aria-live="polite">
-        {showList ? `${suggestions.length} suggestions available` : ''}
+        {suggestionError ? 'Suggestions unavailable; submit the form to search.' : showList ? `${suggestions.length} suggestions available` : ''}
       </div>
     </form>
   )

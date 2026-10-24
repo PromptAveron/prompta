@@ -1,91 +1,83 @@
+'use client'
+
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { AdminHeader, adminButtonClass } from '@/components/admin/admin-header'
-import { requireAdmin } from '@/lib/admin/auth'
+import { createClient } from '@/lib/supabase/client'
 
-export const dynamic = 'force-dynamic'
+type RecentPrompt = { id: string; title: string; status: string; updated_at: string }
 
-export default async function AdminDashboard() {
-  const { supabase } = await requireAdmin()
-  const nowIso = new Date().toISOString()
+export default function AdminDashboard() {
+  const [stats, setStats] = useState<number[] | null>(null)
+  const [recent, setRecent] = useState<RecentPrompt[]>([])
+  const [error, setError] = useState('')
 
-  const [total, live, drafts, categories, recent] = await Promise.all([
-    supabase.from('prompts').select('id', { count: 'exact', head: true }),
-    supabase
-      .from('prompts')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'published')
-      .lte('published_at', nowIso),
-    supabase.from('prompts').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
-    supabase.from('categories').select('id', { count: 'exact', head: true }),
-    supabase
-      .from('prompts')
-      .select('id,title,status,updated_at')
-      .order('updated_at', { ascending: false })
-      .limit(6),
-  ])
+  useEffect(() => {
+    let active = true
+    async function load() {
+      const supabase = createClient()
+      const now = new Date().toISOString()
+      const [total, live, drafts, categories, recentResult] = await Promise.all([
+        supabase.from('prompts').select('id', { count: 'exact', head: true }),
+        supabase.from('prompts').select('id', { count: 'exact', head: true }).eq('status', 'published').lte('published_at', now),
+        supabase.from('prompts').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
+        supabase.from('categories').select('id', { count: 'exact', head: true }),
+        supabase.from('prompts').select('id,title,status,updated_at').order('updated_at', { ascending: false }).limit(6),
+      ])
+      const failure = total.error || live.error || drafts.error || categories.error || recentResult.error
+      if (failure) {
+        if (active) setError('Could not load dashboard data. Please refresh and try again.')
+        return
+      }
+      if (active) {
+        setStats([total.count ?? 0, live.count ?? 0, drafts.count ?? 0, categories.count ?? 0])
+        setRecent((recentResult.data ?? []) as RecentPrompt[])
+      }
+    }
+    void load()
+    return () => { active = false }
+  }, [])
 
-  const stats = [
-    { label: 'Total prompts', value: total.count ?? 0 },
-    { label: 'Live', value: live.count ?? 0 },
-    { label: 'Drafts', value: drafts.count ?? 0 },
-    { label: 'Categories', value: categories.count ?? 0 },
-  ]
-
+  const labels = ['Total prompts', 'Live', 'Drafts', 'Categories']
   return (
     <>
       <AdminHeader
         title="Dashboard"
         description="An overview of your prompt library."
-        actions={
-          <Link href="/admin/prompts/new" className={adminButtonClass}>
-            <Plus className="size-4" aria-hidden="true" />
-            New prompt
-          </Link>
-        }
+        actions={<Link href="/admin/prompts/new" className={adminButtonClass}><Plus className="size-4" aria-hidden="true" />New prompt</Link>}
       />
+      {error ? <p role="alert" className="mb-4 text-sm text-destructive">{error}</p> : null}
       <dl className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {stats.map((s) => (
-          <div key={s.label} className="rounded-xl border border-border bg-card p-5">
-            <dt className="text-sm text-muted-foreground">{s.label}</dt>
-            <dd className="mt-2 text-3xl font-semibold tabular-nums tracking-tight">{s.value}</dd>
+        {labels.map((label, index) => (
+          <div key={label} className="rounded-xl border border-border bg-card p-5">
+            <dt className="text-sm text-muted-foreground">{label}</dt>
+            <dd className="mt-2 text-3xl font-semibold tabular-nums tracking-tight">{stats?.[index] ?? '—'}</dd>
           </div>
         ))}
       </dl>
-
       <section aria-labelledby="recent-heading" className="mt-10">
         <div className="mb-3 flex items-center justify-between">
-          <h2 id="recent-heading" className="text-base font-semibold">
-            Recently edited
-          </h2>
-          <Link href="/admin/prompts" className="text-sm font-medium text-brand hover:underline">
-            View all
-          </Link>
+          <h2 id="recent-heading" className="text-base font-semibold">Recently edited</h2>
+          <Link href="/admin/prompts" className="text-sm font-medium text-brand hover:underline">View all</Link>
         </div>
-        {recent.data?.length ? (
+        {recent.length ? (
           <ul className="divide-y divide-border rounded-xl border border-border bg-card">
-            {recent.data.map((p) => (
-              <li key={p.id}>
-                <Link
-                  href={`/admin/prompts/${p.id}`}
-                  className="flex items-center justify-between gap-4 px-4 py-3 text-sm hover:bg-muted/50"
-                >
-                  <span className="truncate font-medium">{p.title}</span>
+            {recent.map((prompt) => (
+              <li key={prompt.id}>
+                <Link href={`/admin/prompts/edit?id=${prompt.id}`} className="flex items-center justify-between gap-4 px-4 py-3 text-sm hover:bg-muted/50">
+                  <span className="truncate font-medium">{prompt.title}</span>
                   <span className="flex shrink-0 items-center gap-3 text-muted-foreground">
-                    <span className="capitalize">{p.status}</span>
-                    <time dateTime={p.updated_at} className="hidden sm:inline">
-                      {new Date(p.updated_at).toLocaleDateString('en-US', { dateStyle: 'medium' })}
-                    </time>
+                    <span className="capitalize">{prompt.status}</span>
+                    <time dateTime={prompt.updated_at} className="hidden sm:inline">{new Date(prompt.updated_at).toLocaleDateString('en-US', { dateStyle: 'medium' })}</time>
                   </span>
                 </Link>
               </li>
             ))}
           </ul>
-        ) : (
-          <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-            No prompts yet. Create your first one to get started.
-          </p>
-        )}
+        ) : stats && !error ? (
+          <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">No prompts yet. Create your first one to get started.</p>
+        ) : null}
       </section>
     </>
   )

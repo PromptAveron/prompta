@@ -80,7 +80,7 @@ export function PromptForm({ categories, prompt }: Props) {
           <Field
             label="URL slug"
             htmlFor="slug"
-            hint={`Appears at /prompts/${slug || 'your-slug'}. Changing it keeps the old link redirecting.`}
+            hint={`Appears at /prompts/${slug || 'your-slug'}. Changing it changes the URL; rerun the Pages workflow to publish it.`}
             error={fe.slug}
           >
             <input

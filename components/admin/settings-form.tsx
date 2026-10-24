@@ -103,7 +103,7 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
           placeholder="promptavero.com"
           defaultValue={pick('custom_domain')}
           error={fe.custom_domain}
-          hint="Used when no canonical site URL is set. Connect the domain itself in your Vercel project settings."
+          hint="The project URL is jamal-sir.github.io/promptavero. Connect a custom domain in this repository's Pages settings."
         />
       </Section>
 

@@ -14,8 +14,6 @@ import { buildPageMetadata, organizationJsonLd, websiteJsonLd } from '@/lib/seo'
 import { getBaseUrl } from '@/lib/site'
 import type { PromptCardData } from '@/lib/types'
 
-export const revalidate = 300
-
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSettings()
   return buildPageMetadata({

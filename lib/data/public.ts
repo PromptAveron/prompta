@@ -1,5 +1,5 @@
 import { cache } from 'react'
-import { createPublicClient, createUncachedPublicClient } from '@/lib/supabase/public'
+import { createPublicClient } from '@/lib/supabase/public'
 import {
   DEFAULT_SETTINGS,
   PAGE_SIZE,
@@ -122,10 +122,6 @@ export const getPromptPage = cache(
   async (page: number, category?: string | null): Promise<PromptPage> =>
     runSearch(createPublicClient(), { page, category, sort: 'newest' }),
 )
-
-export async function searchPrompts(params: SearchParams): Promise<PromptPage> {
-  return runSearch(createUncachedPublicClient(), params)
-}
 
 export const getTags = cache(async (limit = 24): Promise<{ tag: string; prompt_count: number }[]> => {
   const { data, error } = await createPublicClient().rpc('list_tags', { p_limit: limit })

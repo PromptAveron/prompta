@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next'
 import { getSettings } from '@/lib/data/public'
 import { absoluteUrl, getBaseUrl } from '@/lib/site'
 
-export const revalidate = 3600
+export const dynamic = 'force-static'
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
   const settings = await getSettings()
@@ -13,7 +13,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   }
 
   return {
-    rules: { userAgent: '*', allow: '/', disallow: ['/admin', '/api/'] },
+    rules: { userAgent: '*', allow: '/', disallow: ['/admin'] },
     ...(settings.sitemap_enabled ? { sitemap: absoluteUrl('/sitemap.xml', base) } : {}),
   }
 }

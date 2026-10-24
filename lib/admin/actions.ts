@@ -1,8 +1,5 @@
-'use server'
+'use client'
 
-import { revalidatePath, updateTag } from 'next/cache'
-import { redirect } from 'next/navigation'
-import { assertAdmin, getAdminContext } from '@/lib/admin/auth'
 import {
   checked,
   echoValues,
@@ -15,19 +12,16 @@ import {
   textOrNull,
   type ActionState,
 } from '@/lib/admin/validate'
-import { clientIp, rateLimit } from '@/lib/rate-limit'
 import { slugify } from '@/lib/site'
-import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
-import { CONTENT_TAG } from '@/lib/supabase/public'
+import { createClient } from '@/lib/supabase/client'
 import type { PromptImageVariation } from '@/lib/types'
 
 const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-function refreshPublicContent() {
-  updateTag(CONTENT_TAG)
-  revalidatePath('/', 'layout')
+function navigate(path: string) {
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+  window.location.assign(`${basePath}${path}`)
 }
 
 function unauthorized(): ActionState {
@@ -36,6 +30,18 @@ function unauthorized(): ActionState {
 
 function isImageDimension(value: unknown): value is number | null {
   return value === null || (typeof value === 'number' && Number.isInteger(value) && value > 0)
+}
+
+async function getBrowserAdmin() {
+  const supabase = createClient()
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+  if (userError || !user) return null
+  const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin')
+  if (adminError || isAdmin !== true) return null
+  return { supabase, user }
 }
 
 function parseImageVariations(raw: string): PromptImageVariation[] | null {
@@ -76,15 +82,11 @@ function parseImageVariations(raw: string): PromptImageVariation[] | null {
 /* ------------------------------ Authentication ------------------------------ */
 
 export async function signInAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const ip = await clientIp()
-  const limit = rateLimit(`login:${ip}`, 8, 10 * 60 * 1000)
-  if (!limit.ok) return { error: `Too many attempts. Try again in ${limit.retryAfter} seconds.` }
-
   const email = text(fd, 'email').toLowerCase()
   const password = typeof fd.get('password') === 'string' ? (fd.get('password') as string) : ''
   if (!isEmail(email) || !password) return { error: 'Enter your email and password.', values: { email } }
 
-  const supabase = await createClient()
+  const supabase = createClient()
   const { error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) {
     if (error.code === 'email_not_confirmed') {
@@ -105,76 +107,27 @@ export async function signInAction(_prev: ActionState, fd: FormData): Promise<Ac
     return { error: 'Invalid email or password.', values: { email } }
   }
 
-  redirect(safeAdminPath(text(fd, 'next')))
+  navigate(safeAdminPath(text(fd, 'next')))
+  return { ok: true }
 }
 
 export async function signOutAction(): Promise<void> {
-  const supabase = await createClient()
+  const supabase = createClient()
   await supabase.auth.signOut()
-  redirect('/admin/login')
+  navigate('/admin/login')
 }
 
 export async function setupAdminAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const ip = await clientIp()
-  const limit = rateLimit(`setup:${ip}`, 5, 60 * 60 * 1000)
-  if (!limit.ok) return { error: `Too many attempts. Try again in ${limit.retryAfter} seconds.` }
-
-  const email = text(fd, 'email').toLowerCase()
-  const password = typeof fd.get('password') === 'string' ? (fd.get('password') as string) : ''
-  const fieldErrors: Record<string, string> = {}
-  if (!isEmail(email)) fieldErrors.email = 'Enter a valid email address.'
-  if (password.length < 10) fieldErrors.password = 'Use at least 10 characters.'
-  if (password.length > 128) fieldErrors.password = 'Use 128 characters or fewer.'
-  if (Object.keys(fieldErrors).length) return { fieldErrors, values: { email } }
-
-  const requiredCode = process.env.ADMIN_SETUP_CODE
-  if (requiredCode && text(fd, 'setup_code') !== requiredCode) {
-    return { fieldErrors: { setup_code: 'That setup code is not correct.' }, values: { email } }
-  }
-
-  const service = createServiceClient()
-  const { count, error: countError } = await service
-    .from('admin_users')
-    .select('user_id', { count: 'exact', head: true })
-  if (countError) return { error: 'Setup is unavailable right now. Please try again.', values: { email } }
-  if ((count ?? 0) > 0) return { error: 'An administrator already exists. Sign in instead.' }
-
-  const { data: created, error: createError } = await service.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-  })
-  if (createError || !created.user) {
-    return {
-      error: 'Could not create the account. Check the email address and try again.',
-      values: { email },
-    }
-  }
-
-  const { data: claimed, error: claimError } = await service.rpc('bootstrap_admin', {
-    p_user_id: created.user.id,
-  })
-  if (claimError || claimed !== true) {
-    await service.auth.admin.deleteUser(created.user.id)
-    return { error: 'An administrator already exists. Sign in instead.' }
-  }
-
-  const supabase = await createClient()
-  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-  if (signInError) redirect('/admin/login')
-  redirect('/admin')
+  void fd
+  return { error: 'Create users in Supabase Authentication and grant admin access in the SQL Editor.' }
 }
 
 /* --------------------------------- Prompts --------------------------------- */
 
 export async function savePromptAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const values = echoValues(fd)
-  let ctx
-  try {
-    ctx = await assertAdmin()
-  } catch {
-    return { ...unauthorized(), values }
-  }
+  const ctx = await getBrowserAdmin()
+  if (!ctx) return { ...unauthorized(), values }
 
   const id = text(fd, 'id')
   const title = text(fd, 'title')
@@ -269,38 +222,29 @@ export async function savePromptAction(_prev: ActionState, fd: FormData): Promis
   }
   if (!data) return { error: 'This prompt no longer exists.', values }
 
-  refreshPublicContent()
-  if (!id) redirect(`/admin/prompts/${data.id}?created=1`)
-  return { ok: true, message: 'Prompt saved.', values }
+  if (!id) navigate(`/admin/prompts/edit?id=${data.id}&created=1`)
+  return { ok: true, message: 'Prompt saved. Run the GitHub Pages workflow to publish the updated content.', values }
 }
 
 export async function deletePromptAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  let ctx
-  try {
-    ctx = await assertAdmin()
-  } catch {
-    return unauthorized()
-  }
+  const ctx = await getBrowserAdmin()
+  if (!ctx) return unauthorized()
   const id = text(fd, 'id')
   if (!UUID_PATTERN.test(id)) return { error: 'This prompt could not be found.' }
 
   const { error } = await ctx.supabase.from('prompts').delete().eq('id', id)
   if (error) return { error: 'The prompt could not be deleted. Please try again.' }
 
-  refreshPublicContent()
-  redirect('/admin/prompts?deleted=1')
+  navigate('/admin/prompts?deleted=1')
+  return { ok: true }
 }
 
 /* -------------------------------- Categories -------------------------------- */
 
 export async function saveCategoryAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const values = echoValues(fd)
-  let ctx
-  try {
-    ctx = await assertAdmin()
-  } catch {
-    return { ...unauthorized(), values }
-  }
+  const ctx = await getBrowserAdmin()
+  if (!ctx) return { ...unauthorized(), values }
 
   const id = text(fd, 'id')
   const name = text(fd, 'name')
@@ -358,18 +302,13 @@ export async function saveCategoryAction(_prev: ActionState, fd: FormData): Prom
   }
   if (!data) return { error: 'This category no longer exists.', values }
 
-  refreshPublicContent()
-  if (!id) redirect('/admin/categories?created=1')
-  return { ok: true, message: 'Category saved.', values }
+  if (!id) navigate('/admin/categories?created=1')
+  return { ok: true, message: 'Category saved. Run the GitHub Pages workflow to publish the updated content.', values }
 }
 
 export async function deleteCategoryAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  let ctx
-  try {
-    ctx = await assertAdmin()
-  } catch {
-    return unauthorized()
-  }
+  const ctx = await getBrowserAdmin()
+  if (!ctx) return unauthorized()
   const id = text(fd, 'id')
   if (!UUID_PATTERN.test(id)) return { error: 'This category could not be found.' }
 
@@ -381,20 +320,16 @@ export async function deleteCategoryAction(_prev: ActionState, fd: FormData): Pr
     return { error: 'The category could not be deleted. Please try again.' }
   }
 
-  refreshPublicContent()
-  redirect('/admin/categories?deleted=1')
+  navigate('/admin/categories?deleted=1')
+  return { ok: true }
 }
 
 /* --------------------------------- Settings --------------------------------- */
 
 export async function saveSettingsAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const values = echoValues(fd)
-  let ctx
-  try {
-    ctx = await assertAdmin()
-  } catch {
-    return { ...unauthorized(), values }
-  }
+  const ctx = await getBrowserAdmin()
+  if (!ctx) return { ...unauthorized(), values }
 
   const siteName = text(fd, 'site_name')
   const tagline = text(fd, 'tagline')
@@ -488,10 +423,9 @@ export async function saveSettingsAction(_prev: ActionState, fd: FormData): Prom
     return { error: 'Settings could not be saved. Please try again.', values }
   }
 
-  refreshPublicContent()
-  return { ok: true, message: 'Settings saved.', values }
+  return { ok: true, message: 'Settings saved. Run the GitHub Pages workflow to publish the updated content.', values }
 }
 
 export async function adminSessionActive(): Promise<boolean> {
-  return (await getAdminContext()) !== null
+  return (await getBrowserAdmin()) !== null
 }
