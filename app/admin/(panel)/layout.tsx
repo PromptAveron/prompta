@@ -1,5 +1,6 @@
 'use client'
 
+import { AuthSessionMissingError } from '@supabase/supabase-js'
 import { ExternalLink, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -19,7 +20,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     async function checkAdmin() {
       const supabase = createClient()
       const { data: { user }, error } = await supabase.auth.getUser()
-      if (error) {
+      if (error && !(error instanceof AuthSessionMissingError)) {
         if (active) setStatus('error')
         return
       }
