@@ -1,0 +1,153 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #fbfaf8;
+  --foreground: #0e0e12;
+  --card: #ffffff;
+  --card-foreground: #0e0e12;
+  --popover: #ffffff;
+  --popover-foreground: #0e0e12;
+  --primary: #0e0e12;
+  --primary-foreground: #fbfaf8;
+  --secondary: #f1f0ec;
+  --secondary-foreground: #0e0e12;
+  --muted: #f3f2ee;
+  --muted-foreground: #5a5a66;
+  --accent: #efeefe;
+  --accent-foreground: #2d24b8;
+  --destructive: #b42318;
+  --border: #e5e3dd;
+  --input: #d6d3cb;
+  --ring: #4a3df0;
+  --brand: #4a3df0;
+  --brand-foreground: #ffffff;
+  --brand-soft: #efeefe;
+  --success: #067647;
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: #0a0a0e;
+  --foreground: #f3f3f6;
+  --card: #111116;
+  --card-foreground: #f3f3f6;
+  --popover: #111116;
+  --popover-foreground: #f3f3f6;
+  --primary: #f3f3f6;
+  --primary-foreground: #0a0a0e;
+  --secondary: #17171d;
+  --secondary-foreground: #f3f3f6;
+  --muted: #14141a;
+  --muted-foreground: #a3a3b0;
+  --accent: #1c1a3a;
+  --accent-foreground: #c9c5ff;
+  --destructive: #ff8a80;
+  --border: #25252d;
+  --input: #34343e;
+  --ring: #9a93ff;
+  --brand: #9a93ff;
+  --brand-foreground: #0a0a0e;
+  --brand-soft: #1c1a3a;
+  --success: #4ade80;
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-soft: var(--brand-soft);
+  --color-success: var(--success);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--brand) 28%, transparent);
+  }
+}
+
+@layer utilities {
+  .container-page {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8;
+  }
+  .container-narrow {
+    @apply mx-auto w-full max-w-3xl px-4 sm:px-6 lg:px-8;
+  }
+  .eyebrow {
+    @apply font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground;
+  }
+  .hairline-grid {
+    background-image:
+      linear-gradient(to right, color-mix(in srgb, var(--foreground) 6%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in srgb, var(--foreground) 6%, transparent) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 70% 80% at 50% 0%, #000 30%, transparent 75%);
+  }
+}
+
+@keyframes caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+.caret {
+  animation: caret 1.1s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
